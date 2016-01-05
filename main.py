@@ -134,8 +134,6 @@ def process_enml_media(enml, resources):
 
 def write(notebook, notes, out_dir=''):
     notebook_name = notebook.name
-    if not os.path.exists(notebook_name):
-        os.mkdir(notebook_name)
     for n in notes:
         title = n.title
         dir = '{out_dir}{parent}/{child}'.format(parent=notebook_name,
@@ -144,9 +142,14 @@ def write(notebook, notes, out_dir=''):
             os.makedirs(dir)
         enml = n.content
         resources = n.resources
+        tags = []
+        if n.tagGuids:
+            for i in n.tagGuids:
+                tag = noteStore.getTag(i)
+                tags.append(tag.name)
         with open('{dir}/info.json'.format(dir=dir), 'w') as f:
             info = {"title": title, "created": n.created, "updated": n.updated,
-                    "enml?": enml == None}
+                    "enml?": enml == None, "tags": tags}
             if (resources):
                 info['resources_count'] = len(resources)
             f.write(json.dumps(info, indent=2, sort_keys=True))
