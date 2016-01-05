@@ -1,12 +1,15 @@
 #!/usr/bin/env python
+import binascii
 import collections
 import copy
+import getopt
 import json
 import os
-import string
 import random
-import binascii
+import string
+import sys
 
+import shutil
 import xmltodict as xmltodict
 from evernote.api.client import EvernoteClient, NoteStore
 from evernote.edam.limits import constants as Limits
@@ -58,6 +61,16 @@ def get_notes_from_notebook(notebook):
     return notes
 
 
+def add_filename_type(filename, mime):
+    if mime == 'image/png':
+        filename += '.png'
+    elif mime == 'application/json':
+        filename += '.json'
+    elif mime == 'application/pdf':
+        filename += '.pdf'
+    return filename
+
+
 def find_replace_enmedia_hash(enmedia, resources):
     if u'@hash' in enmedia:
         for i in resources:
@@ -69,6 +82,13 @@ def find_replace_enmedia_hash(enmedia, resources):
                         filename = enmedia[u'@alt']
                     else:
                         filename = hexhash
+
+                    if i.mime:
+                        filename = add_filename_type(filename, i.mime)
+                    elif u'@type' in enmedia:
+                        filename = add_filename_type(filename, enmedia[
+                            u'@type'])
+
                     i.attributes.fileName = filename
                 enmedia[u'@src'] = 'attachments/{filename}'.format(
                     filename=filename)
@@ -90,17 +110,8 @@ def render_files_in_xml(content, html, resources):
                 del content[i]
             elif i == u'en-note':
                 body = html[u'html'][u'body']
-                div = collections.OrderedDict()
-                for h in content[i]:
-                    render_files_in_xml(content[i][h], html, resources)
-                    if h in div.keys():
-                        if isinstance(div[h], list):
-                            div[h].append(content[i][h])
-                        else:
-                            temp = div[h]
-                            div[h] = [temp, content[i][h]]
-                    else:
-                        div[h] = content[i][h]
+                render_files_in_xml(content[i], html, resources)
+                div = content[i]
                 if u'div' in body.keys():
                     if isinstance(body[u'div'], list):
                         body[u'div'].append(div)
@@ -121,15 +132,16 @@ def process_enml_media(enml, resources):
     return xmltodict.unparse(html)
 
 
-def write(notebook, notes):
+def write(notebook, notes, out_dir=''):
     notebook_name = notebook.name
     if not os.path.exists(notebook_name):
         os.mkdir(notebook_name)
     for n in notes:
         title = n.title
-        dir = '{parent}/{child}'.format(parent=notebook_name, child=title)
+        dir = '{out_dir}{parent}/{child}'.format(parent=notebook_name,
+                                                 child=title, out_dir=out_dir)
         if not os.path.exists(dir):
-            os.mkdir(dir)
+            os.makedirs(dir)
         enml = n.content
         resources = n.resources
         with open('{dir}/info.json'.format(dir=dir), 'w') as f:
@@ -141,11 +153,12 @@ def write(notebook, notes):
         if (enml):
             html = process_enml_media(enml, resources)
             with open('{dir}/content.html'.format(dir=dir), 'w') as f:
-                f.write(HTMLBeautifier.beautify(html, 2))
+                html_pretty = HTMLBeautifier.beautify(html, 2)
+                f.write(html_pretty)
         if (resources):
             dir = '{dir}/attachments'.format(dir=dir)
             if not os.path.exists(dir):
-                os.mkdir(dir)
+                os.makedirs(dir)
             for r in resources:
                 filename = r.attributes.fileName
                 if not filename:
@@ -164,13 +177,33 @@ def write(notebook, notes):
     pass
 
 
-def backup():
+def backup(settings):
     print 'Backing up...\n'
 
     for n in noteStore.listNotebooks():
         notes = get_notes_from_notebook(n)
-        write(n, notes)
+        write(n, notes, settings['out_dir'])
+
+
+def main():
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "o:v", ["output="])
+    except getopt.GetoptError as err:
+        # print help information and exit:
+        print(err)  # will print something like "option -a not recognized"
+        sys.exit(2)
+    settings = {'verbose': False, 'out_dir': ''}
+    for o, a in opts:
+        if o == "-v":
+            settings['verbose'] = True
+        elif o in ("-o", "--output"):
+            out_dir = str(a) + "/"
+            settings['out_dir'] = out_dir
+            shutil.rmtree(out_dir, ignore_errors=True)
+        else:
+            assert False, "unhandled option"
+    backup(settings)
 
 
 if __name__ == '__main__':
-    backup()
+    main()
