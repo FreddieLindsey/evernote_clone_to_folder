@@ -1,9 +1,9 @@
 #!/usr/bin/env python
+import os
 
-from evernote.api.client import EvernoteClient
-from evernote.edam.notestore import NoteStore
+from evernote.api.client import EvernoteClient, NoteStore
 from evernote.edam.limits import constants as Limits
-from evernote.edam.type import constants as Types
+from evernote.edam.type import ttypes as Types
 
 # Get the dev token
 with open('dev_token.txt', 'r') as f:
@@ -29,9 +29,20 @@ filter.ascending = False
 spec = NoteStore.NotesMetadataResultSpec()
 spec.includeTitle = True
 
-noteList = noteStore.findNotesMetadata(dev_token, filter, 0,
-                                Limits.EDAM_USER_NOTES_MAX, spec)
+noteList = noteStore.findNotesMetadata(filter, 0, Limits.EDAM_USER_NOTES_MAX,
+                                       spec)
 
 print "\nNotes:"
 for n in noteList.notes:
-    print "\t", n.title
+    note = noteStore.getNote(dev_token, n.guid, True, True, True, True)
+    print '\t', n.title
+    if note.resources:
+        for r in note.resources:
+            fileName = r.attributes.fileName
+            if not fileName:
+                fileName = 'None - ' + os.urandom(8)
+                if r.mime:
+                    if 'image/png' in r.mime:
+                        fileName += '.png'
+            with open(fileName, 'wb') as f:
+                f.write(bytearray(r.data.body))
