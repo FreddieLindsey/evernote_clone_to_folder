@@ -4,7 +4,7 @@ A Python-based CLI tool for cloning your Evernote account locally.
 
 N.B. - It takes a long time to do, regardless of connection speed!
 
-### Prerequisites
+###Prerequisites
 
 This tool has been written on a Mac, and should work with similar UNIX-based machines (Linux).
 
@@ -18,7 +18,7 @@ pip install -r requirements.txt
 
 N.B. You may wish to use `virtualenv` to create a virtual environment in which you can use the tool. Otherwise, you may have to use `sudo` to install the prerequisites system-wide.
 
-### Usage
+###Usage
 
 To use the program, the following options are available:
 
