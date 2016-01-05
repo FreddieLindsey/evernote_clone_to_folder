@@ -5,6 +5,7 @@ import json
 import os
 import string
 import random
+import binascii
 
 import xmltodict as xmltodict
 from evernote.api.client import EvernoteClient, NoteStore
@@ -58,7 +59,21 @@ def get_notes_from_notebook(notebook):
 
 
 def find_replace_enmedia_hash(enmedia, resources):
-    pass
+    if u'@hash' in enmedia:
+        for i in resources:
+            hexhash = binascii.hexlify(i.data.bodyHash)
+            if hexhash == enmedia[u'@hash']:
+                filename = i.attributes.fileName
+                if not filename:
+                    if u'@alt' in enmedia:
+                        filename = enmedia[u'@alt']
+                    else:
+                        filename = hexhash
+                    i.attributes.fileName = filename
+                enmedia[u'@src'] = 'attachments/{filename}'.format(
+                    filename=filename)
+                del enmedia[u'@hash']
+                break
 
 
 def render_files_in_xml(content, html, resources):
@@ -70,8 +85,7 @@ def render_files_in_xml(content, html, resources):
             if isinstance(content[i], str) or isinstance(content[i], unicode):
                 continue
             elif i == u'en-media':
-                for media in content[i]:
-                    find_replace_enmedia_hash(media, resources)
+                find_replace_enmedia_hash(content[i], resources)
                 content[u'img'] = content[i]
                 del content[i]
             elif i == u'en-note':
