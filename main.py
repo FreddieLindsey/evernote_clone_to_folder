@@ -1,14 +1,15 @@
 #!/usr/bin/env python
+import collections
 import copy
 import json
 import os
+import string
+import random
 
-import collections
 import xmltodict as xmltodict
-from html5print import HTMLBeautifier
 from evernote.api.client import EvernoteClient, NoteStore
 from evernote.edam.limits import constants as Limits
-from evernote.edam.type import ttypes as Types
+from html5print import HTMLBeautifier
 
 # Get the dev token
 with open('dev_token.txt', 'r') as f:
@@ -66,7 +67,9 @@ def render_files_in_xml(content, html, resources):
             render_files_in_xml(i, html, resources)
     elif isinstance(content, collections.OrderedDict):
         for i in content.keys():
-            if i == u'en-media':
+            if isinstance(content[i], str) or isinstance(content[i], unicode):
+                continue
+            elif i == u'en-media':
                 for media in content[i]:
                     find_replace_enmedia_hash(media, resources)
                 content[u'img'] = content[i]
@@ -94,7 +97,6 @@ def render_files_in_xml(content, html, resources):
                     body[u'div'] = div
             else:
                 render_files_in_xml(content[i], html, resources)
-    pass
 
 
 def process_enml_media(enml, resources):
@@ -117,8 +119,8 @@ def write(notebook, notes):
         enml = n.content
         resources = n.resources
         with open('{dir}/info.json'.format(dir=dir), 'w') as f:
-            info = { "title": title, "created": n.created, "updated": n.updated,
-                     "enml?": enml == None }
+            info = {"title": title, "created": n.created, "updated": n.updated,
+                    "enml?": enml == None}
             if (resources):
                 info['resources_count'] = len(resources)
             f.write(json.dumps(info, indent=2, sort_keys=True))
@@ -133,7 +135,9 @@ def write(notebook, notes):
             for r in resources:
                 filename = r.attributes.fileName
                 if not filename:
-                    filename = os.urandom(10)
+                    filename = ''.join(random.SystemRandom().choice(
+                        string.ascii_uppercase + string.digits) for _ in
+                                       range(10))
                     if r.mime == 'image/png':
                         filename += '.png'
                     else:
