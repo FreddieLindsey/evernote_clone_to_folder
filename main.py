@@ -13,13 +13,14 @@ with open('dev_token.txt', 'r') as f:
 client = EvernoteClient(token=dev_token)
 userStore = client.get_user_store()
 user = userStore.getUser()
-print user.username
+print "Username:\t", user.username
 
 # Get the notestore
 noteStore = client.get_note_store()
 notebooks = noteStore.listNotebooks()
+print "\nNotebooks:"
 for n in notebooks:
-    print n.name
+    print "\t", n.name
 
 # Get the notes
 filter = NoteStore.NoteFilter()
@@ -30,5 +31,7 @@ spec.includeTitle = True
 
 noteList = noteStore.findNotesMetadata(dev_token, filter, 0,
                                 Limits.EDAM_USER_NOTES_MAX, spec)
+
+print "\nNotes:"
 for n in noteList.notes:
-    print n.title
+    print "\t", n.title
