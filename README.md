@@ -8,7 +8,7 @@ N.B. - It takes a long time to do, regardless of connection speed!
 
 This tool has been written on a Mac, and should work with similar UNIX-based machines (Linux).
 
-You will need a developer token from Evernote for your account. You can get this from [Evernote](https://www.evernote.com/api/DeveloperToken.action) - please save it in a file 'token.txt' in the root folder of the repository that you clone
+You will need a developer token from Evernote for your account. You can get this from [Evernote](https://www.evernote.com/api/DeveloperToken.action) - please save it in a file `'token.txt'` in the root folder of the repository that you clone
 
 Prior to running, there are some dependencies that the application has. To install these, run the following commands:
 
