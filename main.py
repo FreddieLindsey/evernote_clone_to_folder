@@ -5,6 +5,7 @@ import os
 
 import collections
 import xmltodict as xmltodict
+from html5print import HTMLBeautifier
 from evernote.api.client import EvernoteClient, NoteStore
 from evernote.edam.limits import constants as Limits
 from evernote.edam.type import ttypes as Types
@@ -124,7 +125,7 @@ def write(notebook, notes):
         if (enml):
             html = process_enml_media(enml, resources)
             with open('{dir}/content.html'.format(dir=dir), 'w') as f:
-                f.write(html)
+                f.write(HTMLBeautifier.beautify(html, 2))
         if (resources):
             dir = '{dir}/attachments'.format(dir=dir)
             if not os.path.exists(dir):
