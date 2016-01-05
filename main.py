@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import json
 import os
 
 from evernote.api.client import EvernoteClient, NoteStore
@@ -17,32 +18,66 @@ print "Username:\t", user.username
 
 # Get the notestore
 noteStore = client.get_note_store()
-notebooks = noteStore.listNotebooks()
-print "\nNotebooks:"
-for n in notebooks:
-    print "\t", n.name
 
-# Get the notes
-filter = NoteStore.NoteFilter()
-filter.ascending = False
 
-spec = NoteStore.NotesMetadataResultSpec()
-spec.includeTitle = True
+def find_notebook_with_guid(guid):
+    nbooks = noteStore.listNotebooks()
+    for n in nbooks:
+        if n.guid and n.guid is guid:
+            return n
+    pass
 
-noteList = noteStore.findNotesMetadata(filter, 0, Limits.EDAM_USER_NOTES_MAX,
-                                       spec)
 
-print "\nNotes:"
-for n in noteList.notes:
-    note = noteStore.getNote(dev_token, n.guid, True, True, True, True)
-    print '\t', n.title
-    if note.resources:
-        for r in note.resources:
-            fileName = r.attributes.fileName
-            if not fileName:
-                fileName = 'None - ' + os.urandom(8)
-                if r.mime:
-                    if 'image/png' in r.mime:
-                        fileName += '.png'
-            with open(fileName, 'wb') as f:
-                f.write(bytearray(r.data.body))
+def get_notes_from_notebook(notebook):
+    filter = NoteStore.NoteFilter()
+    filter.ascending = True
+    filter.notebookGuid = notebook.guid
+
+    spec = NoteStore.NotesMetadataResultSpec()
+    spec.includeTitle = True
+
+    noteList = noteStore.findNotesMetadata(filter, 0,
+                                           Limits.EDAM_USER_NOTES_MAX, spec)
+
+    notes = []
+    for n in noteList.notes:
+        notes.append(noteStore.getNote(dev_token, n.guid, True, True, True,
+                                       True))
+
+    return notes
+
+
+def write(notebook, notes):
+    if not os.path.exists(notebook.name):
+        os.mkdir(notebook.name)
+    for n in notes:
+        dir = '{parent}/{child}'.format(parent=notebook.name, child=n.title)
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+        title = n.title
+        enml = n.content
+        created = n.created
+        updated = n.updated
+        resources = n.resources
+        with open('{dir}/info.json'.format(dir=dir), 'w') as f:
+            info = { "title": title, "created": created, "updated": updated,
+                     "enml?": enml == None }
+            if (resources):
+                info['resources_count'] = len(resources)
+            f.write(json.dumps(info, indent=2, sort_keys=True))
+        if (enml):
+            with open('{dir}/content.html'.format(dir=dir), 'w') as f:
+                f.write(enml)
+    pass
+
+
+def backup():
+    print 'Backing up...\n'
+
+    for n in noteStore.listNotebooks():
+        notes = get_notes_from_notebook(n)
+        write(n, notes)
+
+
+if __name__ == '__main__':
+    backup()
