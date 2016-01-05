@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+import copy
 import json
 import os
 
+import collections
+import xmltodict as xmltodict
 from evernote.api.client import EvernoteClient, NoteStore
 from evernote.edam.limits import constants as Limits
 from evernote.edam.type import ttypes as Types
@@ -18,6 +21,11 @@ print "Username:\t", user.username
 
 # Get the notestore
 noteStore = client.get_note_store()
+
+# Set a default HTML template
+html_template = xmltodict.parse(
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?><html><body></body></html>"
+)
 
 
 def find_notebook_with_guid(guid):
@@ -47,27 +55,93 @@ def get_notes_from_notebook(notebook):
     return notes
 
 
+def find_replace_enmedia_hash(enmedia, resources):
+    pass
+
+
+def render_files_in_xml(content, html, resources):
+    if isinstance(content, list):
+        for i in content:
+            render_files_in_xml(i, html, resources)
+    elif isinstance(content, collections.OrderedDict):
+        for i in content.keys():
+            if i == u'en-media':
+                for media in content[i]:
+                    find_replace_enmedia_hash(media, resources)
+                content[u'img'] = content[i]
+                del content[i]
+            elif i == u'en-note':
+                body = html[u'html'][u'body']
+                div = collections.OrderedDict()
+                for h in content[i]:
+                    render_files_in_xml(content[i][h], html, resources)
+                    if h in div.keys():
+                        if isinstance(div[h], list):
+                            div[h].append(content[i][h])
+                        else:
+                            temp = div[h]
+                            div[h] = [temp, content[i][h]]
+                    else:
+                        div[h] = content[i][h]
+                if u'div' in body.keys():
+                    if isinstance(body[u'div'], list):
+                        body[u'div'].append(div)
+                    else:
+                        temp = body[u'div']
+                        body[u'div'] = [temp, div]
+                else:
+                    body[u'div'] = div
+            else:
+                render_files_in_xml(content[i], html, resources)
+    pass
+
+
+def process_enml_media(enml, resources):
+    content = xmltodict.parse(enml)
+    html = copy.deepcopy(html_template)
+    html[u'html'][u'body'] = collections.OrderedDict()
+    render_files_in_xml(content, html, resources)
+    return xmltodict.unparse(html)
+
+
 def write(notebook, notes):
-    if not os.path.exists(notebook.name):
-        os.mkdir(notebook.name)
+    notebook_name = notebook.name
+    if not os.path.exists(notebook_name):
+        os.mkdir(notebook_name)
     for n in notes:
-        dir = '{parent}/{child}'.format(parent=notebook.name, child=n.title)
+        title = n.title
+        dir = '{parent}/{child}'.format(parent=notebook_name, child=title)
         if not os.path.exists(dir):
             os.mkdir(dir)
-        title = n.title
         enml = n.content
-        created = n.created
-        updated = n.updated
         resources = n.resources
         with open('{dir}/info.json'.format(dir=dir), 'w') as f:
-            info = { "title": title, "created": created, "updated": updated,
+            info = { "title": title, "created": n.created, "updated": n.updated,
                      "enml?": enml == None }
             if (resources):
                 info['resources_count'] = len(resources)
             f.write(json.dumps(info, indent=2, sort_keys=True))
         if (enml):
+            html = process_enml_media(enml, resources)
             with open('{dir}/content.html'.format(dir=dir), 'w') as f:
-                f.write(enml)
+                f.write(html)
+        if (resources):
+            dir = '{dir}/attachments'.format(dir=dir)
+            if not os.path.exists(dir):
+                os.mkdir(dir)
+            for r in resources:
+                filename = r.attributes.fileName
+                if not filename:
+                    filename = os.urandom(10)
+                    if r.mime == 'image/png':
+                        filename += '.png'
+                    else:
+                        print 'Unimplemented option:\t{type}'.format(
+                            type=r.mime)
+                with open('{dir}/{filename}'.format(dir=dir,
+                                                    filename=filename),
+                          'wb') as f:
+                    f.write(bytearray(r.data.body))
     pass
 
 
