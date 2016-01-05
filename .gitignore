@@ -1,5 +1,5 @@
 # Development files
-dev_token.txt
+token.txt
 *.iml
 .idea/
 

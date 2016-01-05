@@ -16,11 +16,11 @@ from evernote.edam.limits import constants as Limits
 from html5print import HTMLBeautifier
 
 # Get the dev token
-with open('dev_token.txt', 'r') as f:
-    dev_token = f.read()
+with open('token.txt', 'r') as f:
+    token = f.read()
 
 # Authenticate with Evernote
-client = EvernoteClient(token=dev_token)
+client = EvernoteClient(token=token, sandbox=False)
 userStore = client.get_user_store()
 user = userStore.getUser()
 print "Username:\t", user.username
@@ -53,12 +53,7 @@ def get_notes_from_notebook(notebook):
     noteList = noteStore.findNotesMetadata(filter, 0,
                                            Limits.EDAM_USER_NOTES_MAX, spec)
 
-    notes = []
-    for n in noteList.notes:
-        notes.append(noteStore.getNote(dev_token, n.guid, True, True, True,
-                                       True))
-
-    return notes
+    return noteList.notes
 
 
 def add_filename_type(filename, mime):
@@ -136,10 +131,12 @@ def write(notebook, notes, out_dir=''):
     notebook_name = notebook.name
     for n in notes:
         title = n.title
+        print '\r\t\t{note}'.format(note=title),
         dir = '{out_dir}{parent}/{child}'.format(parent=notebook_name,
                                                  child=title, out_dir=out_dir)
         if not os.path.exists(dir):
             os.makedirs(dir)
+        n = noteStore.getNote(token, n.guid, True, True, False, False)
         enml = n.content
         resources = n.resources
         tags = []
@@ -177,15 +174,19 @@ def write(notebook, notes, out_dir=''):
                                                     filename=filename),
                           'wb') as f:
                     f.write(bytearray(r.data.body))
-    pass
 
 
 def backup(settings):
     print 'Backing up...\n'
 
-    for n in noteStore.listNotebooks():
+    notebooks = noteStore.listNotebooks()
+
+    print 'Notebooks backed up:'
+    for n in notebooks:
+        print '\r\t{name}'.format(name=n.name)
         notes = get_notes_from_notebook(n)
         write(n, notes, settings['out_dir'])
+        print
 
 
 def main():
@@ -205,6 +206,8 @@ def main():
             shutil.rmtree(out_dir, ignore_errors=True)
         else:
             assert False, "unhandled option"
+    print 'Welcome to the cloning CLI for Evernote.\n' \
+          'Use this program to clone and backup your Evernote notes and files.\n'
     backup(settings)
 
 
