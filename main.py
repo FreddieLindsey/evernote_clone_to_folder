@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
 from evernote.api.client import EvernoteClient
+from evernote.edam.notestore import NoteStore
+from evernote.edam.limits import constants as Limits
+from evernote.edam.type import constants as Types
 
 # Get the dev token
 with open('dev_token.txt', 'r') as f:
     dev_token = f.read()
 
-# Authenticate with Evernote
+# Authenticate with Evernote
 client = EvernoteClient(token=dev_token)
 userStore = client.get_user_store()
 user = userStore.getUser()
@@ -18,17 +21,14 @@ notebooks = noteStore.listNotebooks()
 for n in notebooks:
     print n.name
 
-# Create a new note
-noteStore = client.get_note_store()
-note = Types.Note()
-note.title = "I'm a test note!"
-note.content = '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">'
-note.content += '<en-note>Hello, world!</en-note>'
-note = noteStore.createNote(note)
+# Get the notes
+filter = NoteStore.NoteFilter()
+filter.ascending = False
 
-# Create a new notebook
-noteStore = client.get_note_store()
-notebook = Types.Notebook()
-notebook.name = "My Notebook"
-notebook = noteStore.createNotebook(notebook)
-print notebook.guid
+spec = NoteStore.NotesMetadataResultSpec()
+spec.includeTitle = True
+
+noteList = noteStore.findNotesMetadata(dev_token, filter, 0,
+                                Limits.EDAM_USER_NOTES_MAX, spec)
+for n in noteList.notes:
+    print n.title
