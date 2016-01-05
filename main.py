@@ -157,10 +157,10 @@ def write(notebook, notes, out_dir=''):
             f.write(json.dumps(info, indent=2, sort_keys=True))
         if (enml):
             html = process_enml_media(enml, resources)
-            with open('{dir}/content.html'.format(dir=dir), 'w') as f:
-                html_pretty = HTMLBeautifier.beautify(html, 2)
-                f = codecs.open('out.txt', mode="w", encoding="iso-8859-1")
-                f.write(html_pretty.encode("iso-8859-1", "replace"))
+            html_pretty = HTMLBeautifier.beautify(html, 2)
+            f = codecs.open('{dir}/content.html'.format(dir=dir), mode='w', encoding="iso-8859-1")
+            f.write(html_pretty.encode("iso-8859-1", "replace"))
+            f.close()
         if (resources):
             dir = '{dir}/attachments'.format(dir=dir)
             if not os.path.exists(dir):
