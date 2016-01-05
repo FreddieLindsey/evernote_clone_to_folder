@@ -129,9 +129,13 @@ def process_enml_media(enml, resources):
 
 def write(notebook, notes, out_dir=''):
     notebook_name = notebook.name
+    count = 1
+    totalCount = len(notes)
     for n in notes:
         title = n.title
-        print '\r\t\t{note}'.format(note=title),
+        print '\r\t\t{count} of {total}:\t{note}'.format(count=count,
+                                                         total=totalCount,
+                                                         note=title),
         dir = '{out_dir}{parent}/{child}'.format(parent=notebook_name,
                                                  child=title, out_dir=out_dir)
         if not os.path.exists(dir):
@@ -174,6 +178,7 @@ def write(notebook, notes, out_dir=''):
                                                     filename=filename),
                           'wb') as f:
                     f.write(bytearray(r.data.body))
+        count += 1
 
 
 def backup(settings):
