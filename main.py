@@ -189,7 +189,7 @@ def write(notebook, notes, out_dir=''):
 
         # Print information about the note to file
         info = {"title": title, "created": n.created, "updated": n.updated,
-                "enml?": enml == None, "tags": tags}
+                "enml?": enml != None, "tags": tags}
         outinfo = '{dir}/info.json'.format(dir=dir)
         if (resources):
             info['resources_count'] = len(resources)
