@@ -139,8 +139,10 @@ def note_has_updated(n, dir):
         try:
             with open('{0}/info.json'.format(dir), 'r') as f:
                 data = json.loads(f.read(), encoding='utf8')
-                if u'updated' in data.keys() and u'success' in data.keys():
-                    return n.updated > data[u'updated'] and data[u'success']
+                if u'updated' in data.keys():
+                    return n.updated > data[u'updated'] or \
+                           (u'success' not in data.keys())
+                return True
         except:
             return True
 
@@ -204,11 +206,11 @@ def write(notebook, notes, out_dir=''):
                                                     filename=filename),
                           'wb') as f:
                     f.write(bytearray(r.data.body))
-
         # Update json on file on success
         info['success'] = True
         with open('{dir}/info.json'.format(dir=dir), 'w') as f:
-            f.write(json.dumps(info, indent=2, sort_keys=True))
+            out = json.dumps(info, indent=2, sort_keys=True)
+            f.write(out.encode('utf8'))
 
 
 def backup(settings):
