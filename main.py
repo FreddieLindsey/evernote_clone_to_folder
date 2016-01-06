@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import binascii
-import codecs
 import collections
 import copy
 import getopt
@@ -10,7 +9,6 @@ import random
 import string
 import sys
 
-import shutil
 import xmltodict as xmltodict
 from evernote.api.client import EvernoteClient, NoteStore
 from evernote.edam.limits import constants as Limits
@@ -50,6 +48,7 @@ def get_notes_from_notebook(notebook):
 
     spec = NoteStore.NotesMetadataResultSpec()
     spec.includeTitle = True
+    spec.includeUpdated = True
 
     noteList = noteStore.findNotesMetadata(filter, 0,
                                            Limits.EDAM_USER_NOTES_MAX, spec)
@@ -120,25 +119,47 @@ def render_files_in_xml(content, html, resources):
                 render_files_in_xml(content[i], html, resources)
 
 
-def process_enml_media(enml, resources):
+def process_enml_media(enml, resources, bob):
     content = xmltodict.parse(enml)
     html = copy.deepcopy(html_template)
     html[u'html'][u'body'] = collections.OrderedDict()
     render_files_in_xml(content, html, resources)
-    return xmltodict.unparse(html)
+    if bob:
+        return xmltodict.unparse(html, encoding='utf8')
+    else:
+        return xmltodict.unparse(html, encoding='utf8')
+
+
+def note_has_updated(n, dir):
+    if not os.path.exists(dir):
+        return True
+    elif not os.path.exists('{0}/info.json'.format(dir)):
+        return True
+    else:
+        try:
+            with open('{0}/info.json'.format(dir), 'r') as f:
+                data = json.loads(f.read(), encoding='utf8')
+                if u'updated' in data.keys() and u'success' in data.keys():
+                    return n.updated > data[u'updated'] and data[u'success']
+        except:
+            return True
 
 
 def write(notebook, notes, out_dir=''):
     notebook_name = notebook.name
-    count = 1
+    count = 0
     totalCount = len(notes)
     for n in notes:
+        count += 1
         title = n.title
-        print '\r\t\t{count} of {total}:\t{note}'.format(count=count,
-                                                         total=totalCount,
-                                                         note=title),
+        print '\t\t{count} of {total}:\t{note}'.format(count=count,
+                                                       total=totalCount,
+                                                       note=title)
         dir = '{out_dir}{parent}/{child}'.format(parent=notebook_name,
                                                  child=title, out_dir=out_dir)
+        note_updated = note_has_updated(n, dir)
+        if note_updated is False:
+            continue
         if not os.path.exists(dir):
             os.makedirs(dir)
         n = noteStore.getNote(token, n.guid, True, True, False, False)
@@ -149,14 +170,18 @@ def write(notebook, notes, out_dir=''):
             for i in n.tagGuids:
                 tag = noteStore.getTag(i)
                 tags.append(tag.name)
+
+        # Print information about the note to file
+        info = {"title": title, "created": n.created, "updated": n.updated,
+                "enml?": enml == None, "tags": tags}
+        if (resources):
+            info['resources_count'] = len(resources)
         with open('{dir}/info.json'.format(dir=dir), 'w') as f:
-            info = {"title": title, "created": n.created, "updated": n.updated,
-                    "enml?": enml == None, "tags": tags}
-            if (resources):
-                info['resources_count'] = len(resources)
             f.write(json.dumps(info, indent=2, sort_keys=True))
+
         if (enml):
-            html = process_enml_media(enml, resources)
+            html = process_enml_media(enml, resources, (
+            'Strangely bent rails after New Zealand earthquake' in title))
             html_pretty = HTMLBeautifier.beautify(html, 2)
             with open('{dir}/content.html'.format(dir=dir), 'w') as f:
                 f.write(html_pretty.encode('utf8'))
@@ -179,7 +204,11 @@ def write(notebook, notes, out_dir=''):
                                                     filename=filename),
                           'wb') as f:
                     f.write(bytearray(r.data.body))
-        count += 1
+
+        # Update json on file on success
+        info['success'] = True
+        with open('{dir}/info.json'.format(dir=dir), 'w') as f:
+            f.write(json.dumps(info, indent=2, sort_keys=True))
 
 
 def backup(settings):
@@ -209,7 +238,6 @@ def main():
         elif o in ("-o", "--output"):
             out_dir = str(a) + "/"
             settings['out_dir'] = out_dir
-            shutil.rmtree(out_dir, ignore_errors=True)
         else:
             assert False, "unhandled option"
     print 'Welcome to the cloning CLI for Evernote.\n' \
