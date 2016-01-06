@@ -68,6 +68,12 @@ def get_notes_from_notebook(notebook):
 
     noteList = noteStore.findNotesMetadata(filter, 0,
                                            Limits.EDAM_USER_NOTES_MAX, spec)
+    while noteList.totalNotes > len(noteList.notes):
+        appendNoteList = noteStore.findNotesMetadata(filter,
+                                                     len(noteList.notes),
+                                                     Limits.EDAM_USER_NOTES_MAX,
+                                                     spec)
+        noteList.notes += appendNoteList.notes
 
     return noteList.notes
 
