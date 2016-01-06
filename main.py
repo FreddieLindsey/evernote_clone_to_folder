@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import binascii
 import collections
 import copy
@@ -11,9 +12,36 @@ import sys
 
 import xmltodict as xmltodict
 from evernote.api.client import EvernoteClient, NoteStore
-from evernote.edam.limits import constants as Limits
 from evernote.edam.error import ttypes as Types
+from evernote.edam.limits import constants as Limits
 from html5print import HTMLBeautifier
+
+
+def EDAMError(error):
+    if error.errorCode is Types.EDAMErrorCode.RATE_LIMIT_REACHED:
+        print 'Rate Limit Exceeded:\tTry again in ', \
+            error.rateLimitDuration / 60, ' minutes, ', \
+            error.rateLimitDuration % 60, ' seconds.'
+    else:
+        print error
+
+
+# Global variables
+try:
+    # Get the dev token
+    with open('token.txt', 'r') as f:
+        token = f.read()
+
+    # Authenticate with Evernote
+    client = EvernoteClient(token=token, sandbox=False)
+    userStore = client.get_user_store()
+
+    # Get the notestore
+    noteStore = client.get_note_store()
+
+    notebooks = noteStore.listNotebooks()
+except Types.EDAMSystemException as e:
+    EDAMError(e)
 
 # Set a default HTML template
 html_template = xmltodict.parse(
@@ -75,6 +103,7 @@ def find_replace_enmedia_hash(enmedia, resources):
                     i.attributes.fileName = filename
                 enmedia[u'@src'] = 'attachments/{filename}'.format(
                     filename=filename)
+                enmedia[u'@src'] = enmedia[u'@src'].decode('utf8')
                 del enmedia[u'@hash']
                 break
 
@@ -194,24 +223,9 @@ def write(notebook, notes, out_dir=''):
 
 
 def backup(settings):
-    print 'Backing up...\n'
-
     try:
-        # Get the dev token
-        with open('token.txt', 'r') as f:
-            token = f.read()
-
-        # Authenticate with Evernote
-        client = EvernoteClient(token=token, sandbox=False)
-        userStore = client.get_user_store()
         user = userStore.getUser()
-        print "Username:\t", user.username
-
-        # Get the notestore
-        noteStore = client.get_note_store()
-
-        notebooks = noteStore.listNotebooks()
-
+        print 'Backing up for user {0}...\n'.format(user.username)
         print 'Notebooks backed up:'
         for n in notebooks:
             print '\r\t{name}'.format(name=n.name)
@@ -219,12 +233,7 @@ def backup(settings):
             write(n, notes, settings['out_dir'])
             print
     except Types.EDAMSystemException as e:
-        if e.errorCode is Types.EDAMErrorCode.RATE_LIMIT_REACHED:
-            print 'Rate Limit Exceeded:\tTry again in ', \
-                e.rateLimitDuration / 60, ' minutes, ', \
-                e.rateLimitDuration % 60 , ' seconds.'
-        else:
-            print e
+        EDAMError(e)
 
 
 def main():
