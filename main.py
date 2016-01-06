@@ -12,20 +12,8 @@ import sys
 import xmltodict as xmltodict
 from evernote.api.client import EvernoteClient, NoteStore
 from evernote.edam.limits import constants as Limits
+from evernote.edam.error import ttypes as Types
 from html5print import HTMLBeautifier
-
-# Get the dev token
-with open('token.txt', 'r') as f:
-    token = f.read()
-
-# Authenticate with Evernote
-client = EvernoteClient(token=token, sandbox=False)
-userStore = client.get_user_store()
-user = userStore.getUser()
-print "Username:\t", user.username
-
-# Get the notestore
-noteStore = client.get_note_store()
 
 # Set a default HTML template
 html_template = xmltodict.parse(
@@ -208,14 +196,35 @@ def write(notebook, notes, out_dir=''):
 def backup(settings):
     print 'Backing up...\n'
 
-    notebooks = noteStore.listNotebooks()
+    try:
+        # Get the dev token
+        with open('token.txt', 'r') as f:
+            token = f.read()
 
-    print 'Notebooks backed up:'
-    for n in notebooks:
-        print '\r\t{name}'.format(name=n.name)
-        notes = get_notes_from_notebook(n)
-        write(n, notes, settings['out_dir'])
-        print
+        # Authenticate with Evernote
+        client = EvernoteClient(token=token, sandbox=False)
+        userStore = client.get_user_store()
+        user = userStore.getUser()
+        print "Username:\t", user.username
+
+        # Get the notestore
+        noteStore = client.get_note_store()
+
+        notebooks = noteStore.listNotebooks()
+
+        print 'Notebooks backed up:'
+        for n in notebooks:
+            print '\r\t{name}'.format(name=n.name)
+            notes = get_notes_from_notebook(n)
+            write(n, notes, settings['out_dir'])
+            print
+    except Types.EDAMSystemException as e:
+        if e.errorCode is Types.EDAMErrorCode.RATE_LIMIT_REACHED:
+            print 'Rate Limit Exceeded:\tTry again in ', \
+                e.rateLimitDuration / 60, ' minutes, ', \
+                e.rateLimitDuration % 60 , ' seconds.'
+        else:
+            print e
 
 
 def main():
