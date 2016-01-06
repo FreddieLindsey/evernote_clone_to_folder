@@ -158,9 +158,8 @@ def write(notebook, notes, out_dir=''):
         if (enml):
             html = process_enml_media(enml, resources)
             html_pretty = HTMLBeautifier.beautify(html, 2)
-            f = codecs.open('{dir}/content.html'.format(dir=dir), mode='w', encoding="iso-8859-1")
-            f.write(html_pretty.encode("iso-8859-1", "replace"))
-            f.close()
+            with open('{dir}/content.html'.format(dir=dir), 'w') as f:
+                f.write(html_pretty.encode('utf8'))
         if (resources):
             dir = '{dir}/attachments'.format(dir=dir)
             if not os.path.exists(dir):
