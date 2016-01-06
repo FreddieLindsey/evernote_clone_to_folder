@@ -30,4 +30,4 @@ For general use:
 ./main.py -o evernote_backup
 ```
 
-Where `evernote_backup` is the folder in which the backup will be made. Note that it does not currently sychronise from Evernote, but downloads and overwrites whatever is currently in that folder should it already exist. PLEASE USE WITH CAUTION.
+Where `evernote_backup` is the folder in which the backup will be made. With current behaviour, the program writes to the directory and files where appropriate the information retrieved, only overwriting folders where it deems the note to have been updated. What this means is that if you delete information in a folder after syncing, it will not be replaced by the program.
