@@ -7,6 +7,7 @@ import getopt
 import json
 import os
 import random
+import re
 import string
 import sys
 
@@ -167,6 +168,20 @@ def note_has_updated(n, dir):
             return True
 
 
+def validate_filename(title):
+    if title is not None:
+        title = re.sub(r'[\/\\\n\\\r\\\t]', r' ', title)
+    return title
+
+
+def validate_filenames(data):
+    if data is None:
+        return
+    for d in data:
+        if hasattr(d, 'attributes'):
+            d.attributes.fileName = validate_filename(d.attributes.fileName)
+
+
 def write(notebook, notes, out_dir=''):
     notebook_name = notebook.name
     count = 0
@@ -177,6 +192,7 @@ def write(notebook, notes, out_dir=''):
         print '\t\t{count} of {total}:\t{note}'.format(count=count,
                                                        total=totalCount,
                                                        note=title)
+        title = validate_filename(title)
         dir = '{out_dir}{parent}/{child}'.format(parent=notebook_name,
                                                  child=title, out_dir=out_dir)
         note_updated = note_has_updated(n, dir)
@@ -186,6 +202,7 @@ def write(notebook, notes, out_dir=''):
             os.makedirs(dir)
         n = noteStore.getNote(token, n.guid, True, True, False, False)
         enml = n.content
+        validate_filenames(n.resources)
         resources = n.resources
         tags = []
         if n.tagGuids:
