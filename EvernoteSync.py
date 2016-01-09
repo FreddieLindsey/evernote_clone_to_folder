@@ -52,8 +52,11 @@ def get_os() :
 
 def get_token():
     if os.path.exists('token.json'):
-        with open('token.json', 'r') as f:
-            return json.loads(f.read())
+        try:
+            with open('token.json', 'r') as f:
+                return json.loads(f.read())
+        except ValueError as e:
+            return None
     return None
 
 
@@ -101,7 +104,7 @@ def get_client() :
             vals['oauth_verifier']
         )
         with open('token.json', 'w') as f:
-            f.write(json.dumps(auth_token))
+            f.write(json.dumps(token))
     return EvernoteClient(token=token), token
 
 
