@@ -16,6 +16,8 @@ import xmltodict as xmltodict
 from evernote.api.client import EvernoteClient, NoteStore
 from evernote.edam.error import ttypes as Types
 from evernote.edam.limits import constants as Limits
+from flask.ext.api import FlaskAPI as Flask
+from flask.ext.api.parsers import URLEncodedParser
 from html5print import HTMLBeautifier
 
 
@@ -73,7 +75,8 @@ def get_client() :
             consumer_secret = '13801fb7745664f3',
             sandbox = True
         )
-        req_token = client.get_request_token('http://localhost')
+
+        req_token = client.get_request_token('http://localhost/')
         os_ = get_os()
         url_ = client.get_authorize_url(req_token)
         if (os_ == 'Mac OS X'):
@@ -95,6 +98,7 @@ def get_client() :
         if exit_code != 0:
             print 'Could not open authorisation url, please open it manually:',
             print url_
+
         print '\n\nPASTE the URL after logging in:\t'
         result = raw_input()
         vals = parse_query_string(result)
