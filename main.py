@@ -9,6 +9,7 @@ import os
 import random
 import re
 import string
+import subprocess
 import sys
 
 import xmltodict as xmltodict
@@ -23,18 +24,91 @@ def EDAMError(error):
         print 'Rate Limit Exceeded:\tTry again in ', \
             error.rateLimitDuration / 60, ' minutes, ', \
             error.rateLimitDuration % 60, ' seconds.'
+        sys.exit(1)
     else:
         print error
 
 
+def parse_query_string(auth_url):
+    uargs = auth_url.split('?')
+    vals = {}
+    if len(uargs) <= 1:
+        raise Exception('Invalid Authorisation URL')
+    for kv in uargs[1].split('&'):
+        key, value = kv.split('=', 1)
+        vals[key] = value
+    return vals
+
+
+def get_os() :
+    p = sys.platform
+    if (p == 'darwin'):
+        return 'Mac OS X'
+    elif (p == 'win32'):
+        return 'Windows'
+    else:
+        return 'Linux or other'
+
+
+def get_token():
+    if os.path.exists('token.json'):
+        with open('token.json', 'r') as f:
+            return json.loads(f.read())
+    return None
+
+
+def get_client() :
+    token = get_token()
+    if not token:
+        print 'Username:\t',
+        username = raw_input()
+        print 'Password:\t',
+        password = raw_input()
+        print '\n'
+        client = EvernoteClient(
+            consumer_key = 'freddieshoreditch-8876',
+            consumer_secret = '13801fb7745664f3',
+            sandbox = True
+        )
+        req_token = client.get_request_token('http://localhost')
+        os_ = get_os()
+        url_ = client.get_authorize_url(req_token)
+        if (os_ == 'Mac OS X'):
+            command = 'open {}'.format(url_)
+        elif (os == 'Windows'):
+            print 'Unimplemented for Windows.'
+            sys.exit(3)
+        elif (os == 'Linux or other'):
+            print 'Unimplemented for Linux or other.'
+            sys.exit(3)
+        else:
+            print 'Unimplemented for your operating system.'
+            sys.exit(3)
+        tries = 0
+        exit_code = -1
+        while (exit_code != 0 and tries < 5):
+            tries += 1
+            exit_code = subprocess.call(command, shell=True)
+        if exit_code != 0:
+            print 'Could not open authorisation url, please open it manually:',
+            print url_
+        print '\n\nPASTE the URL after logging in:\t'
+        result = raw_input()
+        vals = parse_query_string(result)
+        token = client.get_access_token(
+            req_token['oauth_token'],
+            req_token['oauth_token_secret'],
+            vals['oauth_verifier']
+        )
+        with open('token.json', 'w') as f:
+            f.write(json.dumps(auth_token))
+    return EvernoteClient(token=token), token
+
+
 # Global variables
 try:
-    # Get the dev token
-    with open('token.txt', 'r') as f:
-        token = f.read()
-
     # Authenticate with Evernote
-    client = EvernoteClient(token=token, sandbox=False)
+    client, token = get_client()
     userStore = client.get_user_store()
 
     # Get the notestore
