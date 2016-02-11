@@ -73,7 +73,7 @@ def get_client() :
         client = EvernoteClient(
             consumer_key = 'freddieshoreditch-8876',
             consumer_secret = '13801fb7745664f3',
-            sandbox = True
+            sandbox = False
         )
 
         req_token = client.get_request_token('http://localhost/')
